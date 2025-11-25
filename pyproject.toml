@@ -1,0 +1,10 @@
+[project]
+name = "sim-opt"
+version = "0.1.0"
+description = "Simulation based optimization algorithms"
+readme = "README.md"
+requires-python = ">=3.14"
+dependencies = [
+    "matplotlib>=3.10.7",
+    "numpy>=2.3.5",
+]
