@@ -2,7 +2,7 @@ __all__ = ["SimulatedAnnealing"]
 
 import numpy as np
 
-from ..solvers import StochasticSolver
+from solvers import StochasticSolver
 from .optimizer import Optimizer
 
 RNGS = ("selection", "combination", "mutation")
@@ -14,16 +14,17 @@ class SimulatedAnnealing(Optimizer):
     solver: StochasticSolver
 
     def __init__(
-        self, solver: StochasticSolver, temp: float, seeds: dict[str, int] | None = None
+        self,
+        solver: StochasticSolver,
+        temp: float,
+        rngs: dict[str, np.random.Generator] | None = None,
     ):
-        if seeds is None:
-            seeds = {}
-        self.rngs = {}
-        for name, seed in seeds.items():
-            self.rngs[name] = np.random.default_rng(seed)
+        if rngs is None:
+            rngs = {}
         for name in RNGS:
-            if name not in self.rngs:
-                self.rngs[name] = np.random.default_rng()
+            if name not in rngs:
+                rngs[name] = np.random.default_rng()
+        self.rngs = rngs
         self.temp = temp
         self.solver = solver
 

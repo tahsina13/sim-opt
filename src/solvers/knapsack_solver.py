@@ -10,7 +10,7 @@ from .solver import Solver, StochasticSolver
 
 
 class KnapsackSolver(Solver):
-    weights: npt.NDArray[np.int_]
+    weights: npt.NDArray[np.int64]
     limit: int
     solution: list[bool] | None
 
