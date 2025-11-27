@@ -1,3 +1,5 @@
+__all__ = ["KnapsackSolver", "StochasticKnapsackSolver"]
+
 import sys
 from typing import cast
 
@@ -5,8 +7,6 @@ import numpy as np
 import numpy.typing as npt
 
 from .solver import Solver, StochasticSolver
-
-__all__ = ["KnapsackSolver", "StochasticKnapsackSolver"]
 
 
 class KnapsackSolver(Solver):
@@ -26,7 +26,7 @@ class KnapsackSolver(Solver):
             return 0
         return float(total_weight)
 
-    def __lt__(self, other: Solver) -> bool:
+    def __gt__(self, other: Solver) -> bool:
         other = cast(KnapsackSolver, other)
         if self.solution is None or other.solution is None:
             raise RuntimeError(

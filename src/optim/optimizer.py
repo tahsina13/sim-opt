@@ -1,6 +1,6 @@
-from abc import ABC, abstractmethod
-
 __all__ = ["Optimizer"]
+
+from abc import ABC, abstractmethod
 
 
 class Optimizer(ABC):

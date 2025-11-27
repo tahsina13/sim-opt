@@ -1,18 +1,21 @@
+__all__ = ["Solver", "StochasticSolver"]
+
+import copy
 from abc import ABC, abstractmethod
+from functools import total_ordering
 from typing import Self
 
 import numpy as np
 
-__all__ = ["Solver", "StochasticSolver"]
 
-
+@total_ordering
 class Solver(ABC):
     @abstractmethod
     def cost(self) -> float:
         pass
 
     @abstractmethod
-    def __lt__(self, other: Self) -> bool:
+    def __gt__(self, other: Self) -> bool:
         pass
 
     @abstractmethod
@@ -32,3 +35,15 @@ class StochasticSolver(Solver):
     @abstractmethod
     def mutate(self, rng: np.random.Generator):
         pass
+
+    @classmethod
+    def combined(cls, this: Self, other: Self, rng: np.random.Generator):
+        this = copy.copy(this)
+        this.combine(other, rng)
+        return this
+
+    @classmethod
+    def mutated(cls, this: Self, rng: np.random.Generator):
+        this = copy.copy(this)
+        this.mutate(rng)
+        return this

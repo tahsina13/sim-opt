@@ -1,3 +1,5 @@
+__all__ = ["StochasticTSPSolver", "TSPSolver"]
+
 import sys
 from typing import cast
 
@@ -5,8 +7,6 @@ import numpy as np
 import numpy.typing as npt
 
 from .solver import Solver, StochasticSolver
-
-__all__ = ["StochasticTSPSolver", "TSPSolver"]
 
 
 class TSPSolver(Solver):
@@ -23,7 +23,7 @@ class TSPSolver(Solver):
         dst = np.roll(self.solution, -1)
         return np.sum(self.adj_mat[src, dst])
 
-    def __lt__(self, other: Solver) -> bool:
+    def __gt__(self, other: Solver) -> bool:
         other = cast(TSPSolver, other)
         if self.solution is None or other.solution is None:
             raise RuntimeError(

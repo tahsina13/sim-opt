@@ -1,15 +1,15 @@
-from abc import ABC, abstractmethod
-
-import numpy as np
-
-from .optimizer import Optimizer
-
 __all__ = [
     "ExponentialTemp",
     "LinearTemp",
     "LogarithmicTemp",
     "TempScheduler",
 ]
+
+from abc import ABC, abstractmethod
+
+import numpy as np
+
+from .optimizer import Optimizer
 
 
 class TempScheduler(ABC):
@@ -52,6 +52,7 @@ class ExponentialTemp(TempScheduler):
 
     def cool(self, temp: float) -> float:
         return temp * self.cooling_rate
+
 
 class LogarithmicTemp(TempScheduler):
     def __init__(self, optimizer: Optimizer, step_size: int = 1):
