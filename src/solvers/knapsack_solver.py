@@ -18,13 +18,13 @@ class KnapsackSolver(Solver):
         self.weights = weights
         self.limit = limit
 
-    def cost(self) -> float:
-        if self.solution is None:
-            return sys.float_info.min
-        total_weight = np.sum(self.weights[np.flatnonzero(self.solution)])
-        if total_weight > self.limit:
-            return 0
-        return float(total_weight)
+    def __eq__(self, other: object) -> bool:
+        other = cast(KnapsackSolver, other)
+        if self.solution is None or other.solution is None:
+            raise RuntimeError(
+                f"Failed to equate solution '{self.solution}' with '{other.solution}'"
+            )
+        return self.cost == other.cost
 
     def __gt__(self, other: Solver) -> bool:
         other = cast(KnapsackSolver, other)
@@ -32,15 +32,16 @@ class KnapsackSolver(Solver):
             raise RuntimeError(
                 f"Failed to compare solution '{self.solution}' with '{other.solution}'"
             )
-        return self.cost() > other.cost()
+        return self.cost > other.cost
 
-    def __eq__(self, other: object) -> bool:
-        other = cast(KnapsackSolver, other)
-        if self.solution is None or other.solution is None:
-            raise RuntimeError(
-                f"Failed to equate solution '{self.solution}' with '{other.solution}'"
-            )
-        return self.cost() == other.cost()
+    @property
+    def cost(self) -> float:
+        if self.solution is None:
+            return sys.float_info.min
+        total_weight = np.sum(self.weights[np.flatnonzero(self.solution)])
+        if total_weight > self.limit:
+            return 0
+        return float(total_weight)
 
 
 class StochasticKnapsackSolver(KnapsackSolver, StochasticSolver):

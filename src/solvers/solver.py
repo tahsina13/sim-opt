@@ -11,15 +11,16 @@ import numpy as np
 @total_ordering
 class Solver(ABC):
     @abstractmethod
-    def cost(self) -> float:
+    def __eq__(self, other: object) -> bool:
         pass
 
     @abstractmethod
     def __gt__(self, other: Self) -> bool:
         pass
 
+    @property
     @abstractmethod
-    def __eq__(self, other: object) -> bool:
+    def cost(self) -> float:
         pass
 
 

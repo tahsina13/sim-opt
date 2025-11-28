@@ -16,12 +16,13 @@ class TSPSolver(Solver):
     def __init__(self, adj_mat: npt.NDArray[np.float64]):
         self.adj_mat = adj_mat
 
-    def cost(self) -> float:
-        if self.solution is None:
-            return sys.float_info.max
-        src = self.solution
-        dst = np.roll(self.solution, -1)
-        return np.sum(self.adj_mat[src, dst])
+    def __eq__(self, other: object) -> bool:
+        other = cast(TSPSolver, other)
+        if self.solution is None or other.solution is None:
+            raise RuntimeError(
+                f"Failed to equate solution '{self.solution}' with '{other.solution}'"
+            )
+        return self.cost == other.cost
 
     def __gt__(self, other: Solver) -> bool:
         other = cast(TSPSolver, other)
@@ -29,15 +30,15 @@ class TSPSolver(Solver):
             raise RuntimeError(
                 f"Failed to compare solution '{self.solution}' with '{other.solution}'"
             )
-        return self.cost() < other.cost()
+        return self.cost < other.cost
 
-    def __eq__(self, other: object) -> bool:
-        other = cast(TSPSolver, other)
-        if self.solution is None or other.solution is None:
-            raise RuntimeError(
-                f"Failed to equate solution '{self.solution}' with '{other.solution}'"
-            )
-        return self.cost() == other.cost()
+    @property
+    def cost(self) -> float:
+        if self.solution is None:
+            return sys.float_info.max
+        src = self.solution
+        dst = np.roll(self.solution, -1)
+        return np.sum(self.adj_mat[src, dst])
 
 
 class StochasticTSPSolver(TSPSolver, StochasticSolver):

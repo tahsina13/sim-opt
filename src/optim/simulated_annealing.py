@@ -34,9 +34,13 @@ class SimulatedAnnealing(Optimizer):
         )
         new_solver.mutate(self.rngs["mutation"])
         if self.solver > new_solver:
-            energy = abs(self.solver.cost() - new_solver.cost())
+            energy = abs(self.solver.cost - new_solver.cost)
             prob = np.exp(-energy / self.temp)
         else:
             prob = 1.0
         if self.rngs["selection"].uniform() <= prob:
             self.solver = new_solver
+
+    @property
+    def solution(self) -> StochasticSolver:
+        return self.solver

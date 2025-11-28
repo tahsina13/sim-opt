@@ -20,14 +20,14 @@ class TempScheduler(ABC):
     def __init__(self, optimizer: Optimizer, step_size: int = 1):
         self.optimizer = optimizer
         self.step_size = step_size
-        self.steps = 0
+        self.steps = 1
 
     @abstractmethod
     def cool(self, temp: float) -> float:
         pass
 
     def step(self):
-        self.steps = 0
+        self.steps += 1
         if self.steps % self.step_size == 0 and "temp" in self.optimizer.__dict__:
             self.optimizer.__dict__["temp"] = self.cool(self.optimizer.__dict__["temp"])
 

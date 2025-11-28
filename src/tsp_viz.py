@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 
 import argparse
+import time
+from typing import cast
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -14,20 +16,28 @@ from solvers import StochasticTSPSolver
 
 RNGS = ("generation", "selection", "combination", "mutation")
 
+config = [
+    ("-W", "--width", {"type": int, "default": 16, "help": "width of world"}),
+    ("-H", "--height", {"type": int, "default": 12, "help": "height of world"}),
+    ("-n", "--num-nodes", {"type": int, "default": 120, "help": "number of nodes"}),
+    ("-o", "--optimizer", {"type": str, "help": "optimizer to use"}),
+    ("-t", "--temperature", {"type": float, "default": 50, "help": "initial temperature"}),
+    ("-c", "--cooling-schedule", {"type": str, "default": "linear", "help": "cooling schedule"}),
+    ("-r", "--cooling-rate", {"type": float, "default": 1.0, "help": "cooling rate"}),
+    ("-i", "--iterations", {"type": int, "default": 50, "help": "number of iterations"}),
+    ("-s", "--seed", {"type": int, "help": "seed for simulation"}),
+]
+
 parser = argparse.ArgumentParser()
-parser.add_argument("-W", "--width", help="width of world", type=int, default=16)
-parser.add_argument("-H", "--height", help="height of world", type=int, default=12)
-parser.add_argument("-n", "--num-nodes", help="number of nodes", type=int, default=120)
-parser.add_argument("-o", "--optimizer", help="optimizer to use", type=str)
-parser.add_argument("-t", "--temperature", help="initial temperature", type=float, default=50)
-parser.add_argument("-c", "--cooling-schedule", help="cooling schedule", type=str, default="linear")
-parser.add_argument("-r", "--cooling-rate", help="cooling rate", type=float, default=1.0)
-parser.add_argument("-i", "--iterations", help="number of itereations", type=int, default=50)
-parser.add_argument("-s", "--seed", help="seed for simulation", type=int)
+for short, long, kw in config:
+    parser.add_argument(short, long, **kw)
 
 
 def get_optimizer(
-    optimizer: str, solver: StochasticTSPSolver, temp: float, rngs: dict[str, np.random.Generator]
+    optimizer: str,
+    solver: StochasticTSPSolver,
+    temp: float,
+    rngs: dict[str, np.random.Generator],
 ) -> Optimizer:
     match optimizer:
         case "sa":
@@ -59,8 +69,8 @@ def visualize_tsp(
     ys: npt.NDArray[np.float64],
     solver: StochasticTSPSolver,
 ):
-    sol_xs = xs[solver.solution] if solver.solution else []
-    sol_ys = ys[solver.solution] if solver.solution else []
+    indices = np.append(solver.solution, solver.solution[0]) if solver.solution else []
+    sol_xs, sol_ys = xs[indices], ys[indices]
     plt.xlim(-0.5, width + 0.5)
     plt.ylim(-0.5, height + 0.5)
     plt.tick_params(top=True, bottom=True, left=True, right=True)
@@ -91,14 +101,18 @@ def main():
     sched = get_scheduler(args.cooling_schedule, optim, args.cooling_rate)
 
     # optimization loop
-    plt.ion()
-    visualize_tsp(args.width, args.height, xs, ys, solver)
-    for i in range(args.iterations):
+    solution = cast(StochasticTSPSolver, optim.solution)
+    visualize_tsp(args.width, args.height, xs, ys, solution)
+    for i in range(1, args.iterations + 1):
         optim.step()
         sched.step()
-        plt.title(f"Iteration: {i + 1}")
-        visualize_tsp(args.width, args.height, xs, ys, solver)
-        plt.pause(0.5)
+        solution = cast(StochasticTSPSolver, optim.solution)
+        plt.clf()
+        plt.title(f"Iteration: {i}, Cost: {solution.cost:.2f}")
+        solution = cast(StochasticTSPSolver, solution)
+        visualize_tsp(args.width, args.height, xs, ys, solution)
+        plt.pause(0.0001)
+        time.sleep(0.1)
     plt.show()
 
 
