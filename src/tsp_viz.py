@@ -10,9 +10,13 @@ import numpy.typing as npt
 
 from optim import Optimizer
 from optim.simulated_annealing import SimulatedAnnealing
-from optim.temp_scheduler import (ExponentialTemp, LinearTemp, LogarithmicTemp,
-                                  TempScheduler)
-from solvers import StochasticTSPSolver
+from optim.temp_scheduler import (
+    ExponentialTemp,
+    LinearTemp,
+    LogarithmicTemp,
+    TempScheduler,
+)
+from solvers import StochasticTSPSolver, TwoOptTSPSolver
 
 RNGS = ("generation", "selection", "combination", "mutation")
 
@@ -21,10 +25,22 @@ config = [
     ("-H", "--height", {"type": int, "default": 12, "help": "height of world"}),
     ("-n", "--num-nodes", {"type": int, "default": 120, "help": "number of nodes"}),
     ("-o", "--optimizer", {"type": str, "help": "optimizer to use"}),
-    ("-t", "--temperature", {"type": float, "default": 50, "help": "initial temperature"}),
-    ("-c", "--cooling-schedule", {"type": str, "default": "linear", "help": "cooling schedule"}),
+    (
+        "-t",
+        "--temperature",
+        {"type": float, "default": 50, "help": "initial temperature"},
+    ),
+    (
+        "-c",
+        "--cooling-schedule",
+        {"type": str, "default": "linear", "help": "cooling schedule"},
+    ),
     ("-r", "--cooling-rate", {"type": float, "default": 1.0, "help": "cooling rate"}),
-    ("-i", "--iterations", {"type": int, "default": 50, "help": "number of iterations"}),
+    (
+        "-i",
+        "--iterations",
+        {"type": int, "default": 50, "help": "number of iterations"},
+    ),
     ("-s", "--seed", {"type": int, "help": "seed for simulation"}),
 ]
 
@@ -62,22 +78,6 @@ def get_scheduler(
             raise ValueError(f"Unkown cooling schedule '{cooling_schedule}'")
 
 
-def visualize_tsp(
-    width: int,
-    height: int,
-    xs: npt.NDArray[np.float64],
-    ys: npt.NDArray[np.float64],
-    solver: StochasticTSPSolver,
-):
-    indices = np.append(solver.solution, solver.solution[0]) if solver.solution else []
-    sol_xs, sol_ys = xs[indices], ys[indices]
-    plt.xlim(-0.5, width + 0.5)
-    plt.ylim(-0.5, height + 0.5)
-    plt.tick_params(top=True, bottom=True, left=True, right=True)
-    plt.scatter(xs, ys, c="black")
-    plt.plot(sol_xs, sol_ys, c="black")
-
-
 def main():
     args = parser.parse_args()
 
@@ -95,22 +95,36 @@ def main():
     adj_mat = np.sqrt(dx * dx + dy * dy)
     solver = StochasticTSPSolver(adj_mat)
     solver.generate(rngs["generation"])
+    indices = np.append(solver.solution, solver.solution[0]) if solver.solution else []
+    two_opt = TwoOptTSPSolver(adj_mat)
+    two_opt.solve()
+    two_opt_indices = (
+        np.append(two_opt.solution, two_opt.solution[0]) if two_opt.solution else []
+    )
 
     # initialize optimizer
     optim = get_optimizer(args.optimizer, solver, args.temperature, rngs)
     sched = get_scheduler(args.cooling_schedule, optim, args.cooling_rate)
 
     # optimization loop
-    solution = cast(StochasticTSPSolver, optim.solution)
-    visualize_tsp(args.width, args.height, xs, ys, solution)
+    plt.xlim(-0.5, args.width + 0.5)
+    plt.ylim(-0.5, args.height + 0.5)
+    plt.tick_params(top=True, bottom=True, left=True, right=True)
+    plt.scatter(xs, ys, c="black")
+    plt.suptitle(f"2-OPT Cost: {two_opt.cost:.2f}", c="red")
+    plt.plot(xs[two_opt_indices], ys[two_opt_indices], c="red", ls="--")
+    (line,) = plt.plot(xs[indices], ys[indices], c="black")
     for i in range(1, args.iterations + 1):
         optim.step()
         sched.step()
         solution = cast(StochasticTSPSolver, optim.solution)
-        plt.clf()
+        indices = (
+            np.append(solution.solution, solution.solution[0])
+            if solution.solution
+            else []
+        )
         plt.title(f"Iteration: {i}, Cost: {solution.cost:.2f}")
-        solution = cast(StochasticTSPSolver, solution)
-        visualize_tsp(args.width, args.height, xs, ys, solution)
+        line.set_data(xs[indices], ys[indices])
         plt.pause(0.0001)
         time.sleep(0.1)
     plt.show()

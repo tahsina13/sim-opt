@@ -1,4 +1,4 @@
-__all__ = ["Solver", "StochasticSolver"]
+__all__ = ["HeuristicSolver", "Solver", "StochasticSolver"]
 
 import copy
 from abc import ABC, abstractmethod
@@ -21,6 +21,12 @@ class Solver(ABC):
     @property
     @abstractmethod
     def cost(self) -> float:
+        pass
+
+
+class HeuristicSolver(Solver):
+    @abstractmethod
+    def solve(self):
         pass
 
 
