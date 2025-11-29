@@ -6,7 +6,6 @@ from typing import cast
 
 import matplotlib.pyplot as plt
 import numpy as np
-import numpy.typing as npt
 
 from optim import Optimizer
 from optim.simulated_annealing import SimulatedAnnealing
