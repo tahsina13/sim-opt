@@ -2,7 +2,6 @@
 
 import argparse
 import time
-from typing import cast
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -12,6 +11,7 @@ from optim.simulated_annealing import SimulatedAnnealing
 from optim.temp_scheduler import (ExponentialTemp, LinearTemp, LogarithmicTemp,
                                   TempScheduler)
 from solvers import StochasticTSPSolver, TwoOptTSPSolver
+from visualizers.tsp_visualizer import TSPVisualizer
 
 RNGS = ("generation", "selection", "combination", "mutation")
 
@@ -20,10 +20,10 @@ parser.add_argument("-W", "--width", help="width of world", type=int, default=16
 parser.add_argument("-H", "--height", help="height of world", type=int, default=12)
 parser.add_argument("-n", "--num-nodes", help="number of nodes", type=int, default=50)
 parser.add_argument("-o", "--optimizer", help="optimizer to use", type=str)
-parser.add_argument("-t", "--temperature", help="initial temperature", type=float, default=20)
-parser.add_argument("-c", "--cooling-schedule", help="cooling schedule", type=str, default="linear")
-parser.add_argument("-r", "--cooling-rate", help="cooling rate", type=float, default=0.05)
-parser.add_argument("-i", "--iterations", help="number of itereations", type=int, default=100)
+parser.add_argument("-t", "--temperature", help="initial temperature", type=float, default=30)
+parser.add_argument("-c", "--cooling-schedule", help="cooling schedule", type=str, default="exponential")
+parser.add_argument("-r", "--cooling-rate", help="cooling rate", type=float, default=0.99)
+parser.add_argument("-i", "--iterations", help="number of itereations", type=int, default=1500)
 parser.add_argument("-s", "--seed", help="seed for simulation", type=int)
 
 
@@ -73,35 +73,29 @@ def main():
     adj_mat = np.sqrt(dx * dx + dy * dy)
     solver = StochasticTSPSolver(adj_mat)
     solver.generate(rngs["generation"])
-    indices = np.append(solver.solution, solver.solution[0]) if solver.solution else []
     two_opt = TwoOptTSPSolver(adj_mat)
     two_opt.solve()
-    two_opt_indices = (
-        np.append(two_opt.solution, two_opt.solution[0]) if two_opt.solution else []
-    )
 
-    # initialize optimizer
+    # initialize scheduler and optimizer
     sched = get_scheduler(args.cooling_schedule, args.temperature, args.cooling_rate)
     optim = get_optimizer(args.optimizer, solver, sched, rngs)
 
+    # initialize visualizers
+    fig, ax = plt.subplots(1, 1,)
+    fig.suptitle(f"2-OPT Cost: {two_opt.cost:.2f}", c="red")
+    if two_opt.solution is None or len(two_opt.solution) == 0:
+        two_opt_indices = np.array([], dtype=np.int_)
+    else:
+        two_opt_indices = np.append(two_opt.solution, two_opt.solution[0])
+    ax.plot(xs[two_opt_indices], ys[two_opt_indices], c="red", ls="--")
+    visualizer = TSPVisualizer(ax, args.width, args.height, xs, ys, solver)
+    visualizer.setup()
+
     # optimization loop
-    plt.xlim(-0.5, args.width + 0.5)
-    plt.ylim(-0.5, args.height + 0.5)
-    plt.tick_params(top=True, bottom=True, left=True, right=True)
-    plt.scatter(xs, ys, c="black")
-    plt.suptitle(f"2-OPT Cost: {two_opt.cost:.2f}", c="red")
-    plt.plot(xs[two_opt_indices], ys[two_opt_indices], c="red", ls="--")
-    (line,) = plt.plot(xs[indices], ys[indices], c="black")
     for i in range(1, args.iterations + 1):
         optim.step()
         sched.step()
-        indices = (
-            np.append(solver.solution, solver.solution[0])
-            if solver.solution
-            else []
-        )
-        plt.title(f"Iteration: {i}, Cost: {solver.cost:.2f}")
-        line.set_data(xs[indices], ys[indices])
+        visualizer.update(i)
         plt.pause(0.0001)
         time.sleep(0.1)
     plt.show()
