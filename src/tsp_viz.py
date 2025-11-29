@@ -9,43 +9,22 @@ import numpy as np
 
 from optim import Optimizer
 from optim.simulated_annealing import SimulatedAnnealing
-from optim.temp_scheduler import (
-    ExponentialTemp,
-    LinearTemp,
-    LogarithmicTemp,
-    TempScheduler,
-)
+from optim.temp_scheduler import (ExponentialTemp, LinearTemp, LogarithmicTemp,
+                                  TempScheduler)
 from solvers import StochasticTSPSolver, TwoOptTSPSolver
 
 RNGS = ("generation", "selection", "combination", "mutation")
 
-config = [
-    ("-W", "--width", {"type": int, "default": 16, "help": "width of world"}),
-    ("-H", "--height", {"type": int, "default": 12, "help": "height of world"}),
-    ("-n", "--num-nodes", {"type": int, "default": 120, "help": "number of nodes"}),
-    ("-o", "--optimizer", {"type": str, "help": "optimizer to use"}),
-    (
-        "-t",
-        "--temperature",
-        {"type": float, "default": 50, "help": "initial temperature"},
-    ),
-    (
-        "-c",
-        "--cooling-schedule",
-        {"type": str, "default": "linear", "help": "cooling schedule"},
-    ),
-    ("-r", "--cooling-rate", {"type": float, "default": 1.0, "help": "cooling rate"}),
-    (
-        "-i",
-        "--iterations",
-        {"type": int, "default": 50, "help": "number of iterations"},
-    ),
-    ("-s", "--seed", {"type": int, "help": "seed for simulation"}),
-]
-
 parser = argparse.ArgumentParser()
-for short, long, kw in config:
-    parser.add_argument(short, long, **kw)
+parser.add_argument("-W", "--width", help="width of world", type=int, default=16)
+parser.add_argument("-H", "--height", help="height of world", type=int, default=12)
+parser.add_argument("-n", "--num-nodes", help="number of nodes", type=int, default=50)
+parser.add_argument("-o", "--optimizer", help="optimizer to use", type=str)
+parser.add_argument("-t", "--temperature", help="initial temperature", type=float, default=20)
+parser.add_argument("-c", "--cooling-schedule", help="cooling schedule", type=str, default="linear")
+parser.add_argument("-r", "--cooling-rate", help="cooling rate", type=float, default=0.05)
+parser.add_argument("-i", "--iterations", help="number of itereations", type=int, default=100)
+parser.add_argument("-s", "--seed", help="seed for simulation", type=int)
 
 
 def get_optimizer(
