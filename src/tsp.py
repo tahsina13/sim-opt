@@ -11,6 +11,7 @@ from optim.simulated_annealing import SimulatedAnnealing
 from optim.temp_scheduler import (ExponentialTemp, LinearTemp, LogarithmicTemp,
                                   TempScheduler)
 from solvers import StochasticTSPSolver, TwoOptTSPSolver
+from visualizers.cost_visualizer import CostVisualizer
 from visualizers.tsp_visualizer import TSPVisualizer
 
 RNGS = ("generation", "selection", "combination", "mutation")
@@ -81,21 +82,26 @@ def main():
     optim = get_optimizer(args.optimizer, solver, sched, rngs)
 
     # initialize visualizers
-    fig, ax = plt.subplots(1, 1,)
-    fig.suptitle(f"2-OPT Cost: {two_opt.cost:.2f}", c="red")
+    fig, (tsp_ax, cost_ax,) = plt.subplots(1, 2, figsize=(12, 5))
+    fig.suptitle("Travelling Salesman Problem")
     if two_opt.solution is None or len(two_opt.solution) == 0:
         two_opt_indices = np.array([], dtype=np.int_)
     else:
         two_opt_indices = np.append(two_opt.solution, two_opt.solution[0])
-    ax.plot(xs[two_opt_indices], ys[two_opt_indices], c="red", ls="--")
-    visualizer = TSPVisualizer(ax, args.width, args.height, xs, ys, solver)
-    visualizer.setup()
+    tsp_ax.plot(xs[two_opt_indices], ys[two_opt_indices], c="red", ls="--")
+    tsp_viz = TSPVisualizer(tsp_ax, args.width, args.height, xs, ys, solver)
+    tsp_viz.setup()
+    cost_ax.axhline(y=two_opt.cost, c="red", ls="--", label=f"2-OPT Cost: {two_opt.cost:.2f}")
+    cost_viz = CostVisualizer(cost_ax, args.iterations, solver)
+    cost_viz.setup()
+    cost_ax.legend()
 
     # optimization loop
     for i in range(1, args.iterations + 1):
         optim.step()
         sched.step()
-        visualizer.update(i)
+        tsp_viz.update(i)
+        cost_viz.update(i)
         plt.pause(0.0001)
         time.sleep(0.1)
     plt.show()
