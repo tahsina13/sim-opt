@@ -4,29 +4,30 @@ import numpy as np
 
 from solvers import StochasticSolver
 from .optimizer import Optimizer
+from .temp_scheduler import TempScheduler
 
 RNGS = ("selection", "combination", "mutation")
 
 
 class SimulatedAnnealing(Optimizer):
-    rngs: dict[str, np.random.Generator]
-    temp: float
     solver: StochasticSolver
+    temp_sched: TempScheduler
+    rngs: dict[str, np.random.Generator]
 
     def __init__(
         self,
         solver: StochasticSolver,
-        temp: float,
+        temp_sched: TempScheduler,
         rngs: dict[str, np.random.Generator] | None = None,
     ):
+        self.solver = solver
+        self.temp_sched = temp_sched
         if rngs is None:
             rngs = {}
         for name in RNGS:
             if name not in rngs:
                 rngs[name] = np.random.default_rng()
         self.rngs = rngs
-        self.temp = temp
-        self.solver = solver
 
     def step(self):
         new_solver = StochasticSolver.combined(
@@ -35,12 +36,8 @@ class SimulatedAnnealing(Optimizer):
         new_solver.mutate(self.rngs["mutation"])
         if self.solver > new_solver:
             energy = abs(self.solver.cost - new_solver.cost)
-            prob = np.exp(-energy / self.temp)
+            prob = np.exp(-energy / self.temp_sched.temp)
         else:
             prob = 1.0
         if self.rngs["selection"].uniform() <= prob:
-            self.solver = new_solver
-
-    @property
-    def solution(self) -> StochasticSolver:
-        return self.solver
+            self.solver.__dict__.update(new_solver.__dict__)

@@ -27,33 +27,33 @@ parser.add_argument("-i", "--iterations", help="number of itereations", type=int
 parser.add_argument("-s", "--seed", help="seed for simulation", type=int)
 
 
+def get_scheduler(
+    cooling_schedule: str, temp: float, cooling_rate: float
+) -> TempScheduler:
+    match cooling_schedule:
+        case "linear":
+            return LinearTemp(temp, cooling_rate)
+        case "exponential":
+            return ExponentialTemp(temp, cooling_rate)
+        case "logarithmic":
+            return LogarithmicTemp(temp)
+        case _:
+            raise ValueError(f"Unkown cooling schedule '{cooling_schedule}'")
+
+
 def get_optimizer(
     optimizer: str,
     solver: StochasticTSPSolver,
-    temp: float,
+    temp_sched: TempScheduler,
     rngs: dict[str, np.random.Generator],
 ) -> Optimizer:
     match optimizer:
         case "sa":
-            return SimulatedAnnealing(solver, temp, rngs)
+            return SimulatedAnnealing(solver, temp_sched, rngs)
         case "ga":
             raise NotImplementedError(f"Optimizer '{optimizer}' not implemented yet")
         case _:
             raise ValueError(f"Unknown optimizer '{optimizer}'")
-
-
-def get_scheduler(
-    cooling_schedule: str, optimizer: Optimizer, cooling_rate: float
-) -> TempScheduler:
-    match cooling_schedule:
-        case "linear":
-            return LinearTemp(optimizer, cooling_rate)
-        case "exponential":
-            return ExponentialTemp(optimizer, cooling_rate)
-        case "logarithmic":
-            return LogarithmicTemp(optimizer)
-        case _:
-            raise ValueError(f"Unkown cooling schedule '{cooling_schedule}'")
 
 
 def main():
@@ -81,8 +81,8 @@ def main():
     )
 
     # initialize optimizer
-    optim = get_optimizer(args.optimizer, solver, args.temperature, rngs)
-    sched = get_scheduler(args.cooling_schedule, optim, args.cooling_rate)
+    sched = get_scheduler(args.cooling_schedule, args.temperature, args.cooling_rate)
+    optim = get_optimizer(args.optimizer, solver, sched, rngs)
 
     # optimization loop
     plt.xlim(-0.5, args.width + 0.5)
@@ -95,13 +95,12 @@ def main():
     for i in range(1, args.iterations + 1):
         optim.step()
         sched.step()
-        solution = cast(StochasticTSPSolver, optim.solution)
         indices = (
-            np.append(solution.solution, solution.solution[0])
-            if solution.solution
+            np.append(solver.solution, solver.solution[0])
+            if solver.solution
             else []
         )
-        plt.title(f"Iteration: {i}, Cost: {solution.cost:.2f}")
+        plt.title(f"Iteration: {i}, Cost: {solver.cost:.2f}")
         line.set_data(xs[indices], ys[indices])
         plt.pause(0.0001)
         time.sleep(0.1)
