@@ -1,13 +1,12 @@
 __all__ = ["TSPVisualizer"]
 
-from .visualizer import Visualizer
-
 import numpy as np
 import numpy.typing as npt
 from matplotlib.axes import Axes
 from matplotlib.lines import Line2D
-
 from solvers import TSPSolver
+
+from .visualizer import Visualizer
 
 
 class TSPVisualizer(Visualizer):
