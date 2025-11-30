@@ -2,7 +2,7 @@
 
 import argparse
 import time
-from typing import Sequence, cast
+from typing import Sequence
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -14,6 +14,7 @@ from optim.temp_scheduler import (ExponentialTemp, LinearTemp, LogarithmicTemp,
                                   TempScheduler)
 from solvers import StochasticTSPSolver, TwoOptTSPSolver
 from visualizers.cost_visualizer import CostVisualizer
+from visualizers.ga_visualizer import GAVisualizer
 from visualizers.sa_visualizer import SAVisualizer
 from visualizers.temp_visualizer import TempVisualizer
 from visualizers.tsp_visualizer import TSPVisualizer
@@ -114,10 +115,10 @@ def main():
     cost_ax.legend()
 
     optim_viz = None
-    if args.optimizer == "sa":
-        optim_viz = SAVisualizer(optim_ax, args.iterations, cast(SimulatedAnnealing, optim))
-    elif args.optimizer == "ga":
-        pass # TODO: implement
+    if isinstance(optim, SimulatedAnnealing):
+        optim_viz = SAVisualizer(optim_ax, args.iterations, optim)
+    elif isinstance(optim, GeneticAlgorithm):
+        optim_viz = GAVisualizer(optim_ax, args.iterations, optim)
     if optim_viz:
         optim_viz.setup()
 

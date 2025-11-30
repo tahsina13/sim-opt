@@ -1,5 +1,6 @@
 __all__ = [
     "CostVisualizer",
+    "GAVisualizer",
     "SAVisualizer",
     "TempVisualizer",
     "TSPVisualizer",
@@ -7,6 +8,7 @@ __all__ = [
 ]
 
 from .cost_visualizer import CostVisualizer
+from .ga_visualizer import GAVisualizer
 from .sa_visualizer import SAVisualizer
 from .temp_visualizer import TempVisualizer
 from .tsp_visualizer import TSPVisualizer
