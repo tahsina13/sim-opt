@@ -1,8 +1,8 @@
 __all__ = ["SimulatedAnnealing"]
 
 import numpy as np
-
 from solvers import StochasticSolver
+
 from .optimizer import Optimizer
 from .temp_scheduler import TempScheduler
 
@@ -19,17 +19,17 @@ class SimulatedAnnealing(Optimizer):
         self,
         solver: StochasticSolver,
         temp_sched: TempScheduler,
-        rngs: dict[str, np.random.Generator] | None = None,
+        seed_seq: np.random.SeedSequence | None = None,
     ):
         self.solver = solver
         self.temp_sched = temp_sched
-        if rngs is None:
-            rngs = {}
-        for name in RNGS:
-            if name not in rngs:
-                rngs[name] = np.random.default_rng()
-        self.rngs = rngs
-        self.prob = 1.0
+        if not seed_seq:
+            seed_seq = np.random.SeedSequence()
+        seeds = seed_seq.spawn(len(RNGS))
+        self.rngs = {}
+        for name, seed in zip(RNGS, seeds):
+            self.rngs[name] = np.random.default_rng(seed)
+        self.prob = 0.5
 
     def step(self):
         # perturbe current solution

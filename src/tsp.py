@@ -51,17 +51,17 @@ def get_optimizer(
     optimizer: str,
     solver: StochasticTSPSolver | Sequence[StochasticTSPSolver],
     temp_sched: TempScheduler,
-    rngs: dict[str, np.random.Generator],
+    seed_seq: np.random.SeedSequence,
 ) -> Optimizer:
     match optimizer:
         case "sa":
             if not isinstance(solver, StochasticTSPSolver):
                 raise ValueError("Simulated annealing requires solver not list of solvers")
-            return SimulatedAnnealing(solver, temp_sched, rngs)
+            return SimulatedAnnealing(solver, temp_sched, seed_seq)
         case "ga":
             if not isinstance(solver, Sequence):
                 raise ValueError("Genetic algorithm requires list of solvers not solver")
-            return GeneticAlgorithm(solver, temp_sched, rngs)
+            return GeneticAlgorithm(solver, temp_sched, seed_seq)
         case _:
             raise ValueError(f"Unknown optimizer '{optimizer}'")
 
@@ -70,14 +70,13 @@ def main():
     args = parser.parse_args()
 
     # initialize RNG streams
-    sq = np.random.SeedSequence(args.seed)
-    rngs = {
-        name: np.random.default_rng(sd) for name, sd in zip(RNGS, sq.spawn(len(RNGS)))
-    }
+    seed_seq = np.random.SeedSequence(args.seed)
+    gen_seed, optim_seed = seed_seq.spawn(2)
+    gen_rng = np.random.default_rng(gen_seed)
 
     # generate TSP instance and initial solution
-    xs = rngs["generation"].uniform(0, args.width, args.num_nodes)
-    ys = rngs["generation"].uniform(0, args.height, args.num_nodes)
+    xs = gen_rng.uniform(0, args.width, args.num_nodes)
+    ys = gen_rng.uniform(0, args.height, args.num_nodes)
     dx = xs[:, np.newaxis] - xs[np.newaxis, :]
     dy = ys[:, np.newaxis] - ys[np.newaxis, :]
     adj_mat = np.sqrt(dx * dx + dy * dy)
@@ -85,7 +84,7 @@ def main():
     two_opt.solve()
     solvers = [StochasticTSPSolver(adj_mat) for _ in range(args.population)]
     for solver in solvers:
-        solver.generate(rngs["generation"])
+        solver.generate(gen_rng)
     if args.optimizer == "sa":
         solver = max(solvers)
     else:
@@ -93,7 +92,7 @@ def main():
 
     # initialize scheduler and optimizer
     sched = get_scheduler(args.cooling_schedule, args.temperature, args.cooling_rate)
-    optim = get_optimizer(args.optimizer, solver, sched, rngs)
+    optim = get_optimizer(args.optimizer, solver, sched, optim_seed)
 
     # initialize visualizers
     fig, axes = plt.subplots(2, 2, figsize=(12, 8))

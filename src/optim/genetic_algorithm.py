@@ -21,16 +21,16 @@ class GeneticAlgorithm(Optimizer):
         self,
         solvers: Sequence[StochasticSolver],
         temp_sched: TempScheduler,
-        rngs: dict[str, np.random.Generator] | None = None,
+        seed_seq: np.random.SeedSequence | None = None,
     ):
         self.solvers = solvers
         self.temp_sched = temp_sched
-        if rngs is None:
-            rngs = {}
-        for name in RNGS:
-            if name not in rngs:
-                rngs[name] = np.random.default_rng()
-        self.rngs = rngs
+        if not seed_seq:
+            seed_seq = np.random.SeedSequence()
+        seeds = seed_seq.spawn(len(RNGS))
+        self.rngs = {}
+        for name, seed in zip(RNGS, seeds):
+            self.rngs[name] = np.random.default_rng(seed)
         self.probs = [1.0 / len(solvers) for _ in solvers]
 
     def step(self):
