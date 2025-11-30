@@ -2,12 +2,13 @@
 
 import argparse
 import time
-from typing import cast
+from typing import Sequence, cast
 
 import matplotlib.pyplot as plt
 import numpy as np
 
 from optim import Optimizer
+from optim.genetic_algorithm import GeneticAlgorithm
 from optim.simulated_annealing import SimulatedAnnealing
 from optim.temp_scheduler import (ExponentialTemp, LinearTemp, LogarithmicTemp,
                                   TempScheduler)
@@ -23,6 +24,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument("-W", "--width", help="width of world", type=int, default=16)
 parser.add_argument("-H", "--height", help="height of world", type=int, default=12)
 parser.add_argument("-n", "--num-nodes", help="number of nodes", type=int, default=50)
+parser.add_argument("-p", "--population", help="population size", type=int, default=20)
 parser.add_argument("-o", "--optimizer", help="optimizer to use", type=str)
 parser.add_argument("-t", "--temperature", help="initial temperature", type=float, default=30)
 parser.add_argument("-c", "--cooling-schedule", help="cooling schedule", type=str, default="exponential")
@@ -47,15 +49,19 @@ def get_scheduler(
 
 def get_optimizer(
     optimizer: str,
-    solver: StochasticTSPSolver,
+    solver: StochasticTSPSolver | Sequence[StochasticTSPSolver],
     temp_sched: TempScheduler,
     rngs: dict[str, np.random.Generator],
 ) -> Optimizer:
     match optimizer:
         case "sa":
+            if not isinstance(solver, StochasticTSPSolver):
+                raise ValueError("Simulated annealing requires solver not list of solvers")
             return SimulatedAnnealing(solver, temp_sched, rngs)
         case "ga":
-            raise NotImplementedError(f"Optimizer '{optimizer}' not implemented yet")
+            if not isinstance(solver, Sequence):
+                raise ValueError("Genetic algorithm requires list of solvers not solver")
+            return GeneticAlgorithm(solver, temp_sched, rngs)
         case _:
             raise ValueError(f"Unknown optimizer '{optimizer}'")
 
@@ -75,10 +81,15 @@ def main():
     dx = xs[:, np.newaxis] - xs[np.newaxis, :]
     dy = ys[:, np.newaxis] - ys[np.newaxis, :]
     adj_mat = np.sqrt(dx * dx + dy * dy)
-    solver = StochasticTSPSolver(adj_mat)
-    solver.generate(rngs["generation"])
     two_opt = TwoOptTSPSolver(adj_mat)
     two_opt.solve()
+    solvers = [StochasticTSPSolver(adj_mat) for _ in range(args.population)]
+    for solver in solvers:
+        solver.generate(rngs["generation"])
+    if args.optimizer == "sa":
+        solver = max(solvers)
+    else:
+        solver = solvers
 
     # initialize scheduler and optimizer
     sched = get_scheduler(args.cooling_schedule, args.temperature, args.cooling_rate)
@@ -86,8 +97,8 @@ def main():
 
     # initialize visualizers
     fig, axes = plt.subplots(2, 2, figsize=(12, 8))
-    plt.subplots_adjust(hspace=0.3)
     tsp_ax, cost_ax, optim_ax, temp_ax = axes.flatten()
+    plt.subplots_adjust(hspace=0.3)
     fig.suptitle("Travelling Salesman Problem")
 
     # if two_opt.solution is None or len(two_opt.solution) == 0:

@@ -1,5 +1,7 @@
 __all__ = ["TSPVisualizer"]
 
+from typing import Sequence, Tuple
+
 import numpy as np
 import numpy.typing as npt
 from matplotlib.axes import Axes
@@ -15,7 +17,7 @@ class TSPVisualizer(Visualizer):
     height: int
     xs: npt.NDArray[np.float64]
     ys: npt.NDArray[np.float64]
-    solver: TSPSolver
+    solver: TSPSolver | Sequence[TSPSolver]
     line: Line2D | None
 
     def __init__(
@@ -25,7 +27,7 @@ class TSPVisualizer(Visualizer):
         height: int,
         xs: npt.NDArray[np.float64],
         ys: npt.NDArray[np.float64],
-        solver: TSPSolver,
+        solver: TSPSolver | Sequence[TSPSolver],
     ):
         self.ax = ax
         self.width = width
@@ -34,27 +36,35 @@ class TSPVisualizer(Visualizer):
         self.ys = ys
         self.solver = solver
 
-    def _indices(self) -> npt.NDArray[np.int_]:
-        if self.solver.solution is None or len(self.solver.solution) == 0:
-            return np.array([], dtype=np.int_)
-        return np.append(self.solver.solution, self.solver.solution[0])
+    def _solution(self) -> TSPSolver:
+        return self.solver if isinstance(self.solver, TSPSolver) else max(self.solver)
+
+    def _points(
+        self, solver: TSPSolver
+    ) -> Tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]]:
+        if solver.solution is None or len(solver.solution) == 0:
+            return np.array([], dtype=np.float64), np.array([], dtype=np.float64)
+        indices = np.append(solver.solution, solver.solution[0])
+        return self.xs[indices], self.ys[indices]
 
     def setup(self):
-        self.ax.set_title(f"Iteration: 0, Cost: {self.solver.cost:.2f}")
+        solution = self._solution()
+        xs, ys = self._points(solution)
+        self.ax.set_title(f"Iteration: 0, Cost: {solution.cost:.2f}")
         self.ax.set_xlabel("x")
         self.ax.set_ylabel("y")
         self.ax.set_xlim(-0.5, self.width + 0.5)
         self.ax.set_ylim(-0.5, self.height + 0.5)
         self.ax.tick_params(top=True, bottom=True, left=True, right=True)
         self.ax.scatter(self.xs, self.ys, c="black")
-        indices = self._indices()
-        (self.line,) = self.ax.plot(self.xs[indices], self.ys[indices], c="black")
+        (self.line,) = self.ax.plot(xs, ys, c="black")
 
     def update(self, k: int):
         if self.line is None:
             raise RuntimeError(
                 "Failed to update visualizer because visualizer was not setup"
             )
-        self.ax.set_title(f"Iteration: {k}, Cost: {self.solver.cost:.2f}")
-        indices = self._indices()
-        self.line.set_data(self.xs[indices], self.ys[indices])
+        solution = self._solution()
+        xs, ys = self._points(solution)
+        self.ax.set_title(f"Iteration: {k}, Cost: {solution.cost:.2f}")
+        self.line.set_data(xs, ys)

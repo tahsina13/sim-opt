@@ -1,5 +1,7 @@
 __all__ = ["GeneticAlgorithm"]
 
+from typing import Sequence
+
 import numpy as np
 from solvers import StochasticSolver
 
@@ -10,14 +12,14 @@ RNGS = ("selection", "combination", "mutation")
 
 
 class GeneticAlgorithm(Optimizer):
-    solvers: list[StochasticSolver]
+    solvers: Sequence[StochasticSolver]
     temp_sched: TempScheduler
     rngs: dict[str, np.random.Generator]
     probs: list[float]
 
     def __init__(
         self,
-        solvers: list[StochasticSolver],
+        solvers: Sequence[StochasticSolver],
         temp_sched: TempScheduler,
         rngs: dict[str, np.random.Generator] | None = None,
     ):
@@ -41,8 +43,8 @@ class GeneticAlgorithm(Optimizer):
         # get new generation
         new_solvers = []
         for _ in range(len(self.solvers) // 2):
-            i = self.rngs["selection"].choice(self.probs)
-            j = self.rngs["selection"].choice(self.probs)
+            i = self.rngs["selection"].choice(len(self.solvers), p=self.probs)
+            j = self.rngs["selection"].choice(len(self.solvers), p=self.probs)
             a = StochasticSolver.combined(
                 self.solvers[i], self.solvers[j], self.rngs["combination"]
             )
@@ -54,4 +56,4 @@ class GeneticAlgorithm(Optimizer):
             new_solvers.append(a)
             new_solvers.append(b)
         for i in range(len(self.solvers)):
-            self.solvers[i].__dict__.update(new_solvers[i])
+            self.solvers[i].__dict__.update(new_solvers[i].__dict__)
