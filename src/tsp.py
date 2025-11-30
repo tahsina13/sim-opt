@@ -2,6 +2,7 @@
 
 import argparse
 import time
+from typing import cast
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -12,6 +13,8 @@ from optim.temp_scheduler import (ExponentialTemp, LinearTemp, LogarithmicTemp,
                                   TempScheduler)
 from solvers import StochasticTSPSolver, TwoOptTSPSolver
 from visualizers.cost_visualizer import CostVisualizer
+from visualizers.sa_visualizer import SAVisualizer
+from visualizers.temp_visualizer import TempVisualizer
 from visualizers.tsp_visualizer import TSPVisualizer
 
 RNGS = ("generation", "selection", "combination", "mutation")
@@ -82,19 +85,34 @@ def main():
     optim = get_optimizer(args.optimizer, solver, sched, rngs)
 
     # initialize visualizers
-    fig, (tsp_ax, cost_ax,) = plt.subplots(1, 2, figsize=(12, 5))
+    fig, axes = plt.subplots(2, 2, figsize=(12, 8))
+    plt.subplots_adjust(hspace=0.3)
+    tsp_ax, cost_ax, optim_ax, temp_ax = axes.flatten()
     fig.suptitle("Travelling Salesman Problem")
-    if two_opt.solution is None or len(two_opt.solution) == 0:
-        two_opt_indices = np.array([], dtype=np.int_)
-    else:
-        two_opt_indices = np.append(two_opt.solution, two_opt.solution[0])
-    tsp_ax.plot(xs[two_opt_indices], ys[two_opt_indices], c="red", ls="--")
+
+    # if two_opt.solution is None or len(two_opt.solution) == 0:
+    #     two_opt_indices = np.array([], dtype=np.int_)
+    # else:
+    #     two_opt_indices = np.append(two_opt.solution, two_opt.solution[0])
+    # tsp_ax.plot(xs[two_opt_indices], ys[two_opt_indices], c="red", ls="--")
     tsp_viz = TSPVisualizer(tsp_ax, args.width, args.height, xs, ys, solver)
     tsp_viz.setup()
+
     cost_ax.axhline(y=two_opt.cost, c="red", ls="--", label=f"2-OPT Cost: {two_opt.cost:.2f}")
     cost_viz = CostVisualizer(cost_ax, args.iterations, solver)
     cost_viz.setup()
     cost_ax.legend()
+
+    optim_viz = None
+    if args.optimizer == "sa":
+        optim_viz = SAVisualizer(optim_ax, args.iterations, cast(SimulatedAnnealing, optim))
+    elif args.optimizer == "ga":
+        pass # TODO: implement
+    if optim_viz:
+        optim_viz.setup()
+
+    temp_viz = TempVisualizer(temp_ax, args.iterations, sched)
+    temp_viz.setup()
 
     # optimization loop
     for i in range(1, args.iterations + 1):
@@ -102,8 +120,11 @@ def main():
         sched.step()
         tsp_viz.update(i)
         cost_viz.update(i)
+        if optim_viz:
+            optim_viz.update(i)
+        temp_viz.update(i)
         plt.pause(0.0001)
-        time.sleep(0.1)
+        time.sleep(0.001)
     plt.show()
 
 
