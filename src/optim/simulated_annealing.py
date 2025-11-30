@@ -32,10 +32,13 @@ class SimulatedAnnealing(Optimizer):
         self.prob = 1.0
 
     def step(self):
+        # perturbe current solution
         new_solver = StochasticSolver.combined(
             self.solver, self.solver, self.rngs["combination"]
         )
         new_solver.mutate(self.rngs["mutation"])
+
+        # accept/reject solution
         if self.solver > new_solver:
             energy = abs(self.solver.cost - new_solver.cost)
             self.prob = np.exp(-energy / self.temp_sched.temp)
