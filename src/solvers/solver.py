@@ -44,13 +44,13 @@ class StochasticSolver(Solver):
         pass
 
     @classmethod
-    def combined(cls, this: Self, other: Self, rng: np.random.Generator):
+    def combined(cls, this: Self, other: Self, rng: np.random.Generator) -> Self:
         this = copy.copy(this)
         this.combine(other, rng)
         return this
 
     @classmethod
-    def mutated(cls, this: Self, rng: np.random.Generator):
+    def mutated(cls, this: Self, rng: np.random.Generator) -> Self:
         this = copy.copy(this)
         this.mutate(rng)
         return this

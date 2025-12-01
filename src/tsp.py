@@ -50,19 +50,15 @@ def get_scheduler(
 
 def get_optimizer(
     optimizer: str,
-    solver: StochasticTSPSolver | Sequence[StochasticTSPSolver],
+    solvers: Sequence[StochasticTSPSolver],
     temp_sched: TempScheduler,
     seed_seq: np.random.SeedSequence,
 ) -> Optimizer:
     match optimizer:
         case "sa":
-            if not isinstance(solver, StochasticTSPSolver):
-                raise ValueError("Simulated annealing requires solver not list of solvers")
-            return SimulatedAnnealing(solver, temp_sched, seed_seq)
+            return SimulatedAnnealing(max(solvers), temp_sched, seed_seq)
         case "ga":
-            if not isinstance(solver, Sequence):
-                raise ValueError("Genetic algorithm requires list of solvers not solver")
-            return GeneticAlgorithm(solver, temp_sched, seed_seq)
+            return GeneticAlgorithm(solvers, temp_sched, seed_seq)
         case _:
             raise ValueError(f"Unknown optimizer '{optimizer}'")
 
@@ -86,14 +82,10 @@ def main():
     solvers = [StochasticTSPSolver(adj_mat) for _ in range(args.population)]
     for solver in solvers:
         solver.generate(gen_rng)
-    if args.optimizer == "sa":
-        solver = max(solvers)
-    else:
-        solver = solvers
 
     # initialize scheduler and optimizer
     sched = get_scheduler(args.cooling_schedule, args.temperature, args.cooling_rate)
-    optim = get_optimizer(args.optimizer, solver, sched, optim_seed)
+    optim = get_optimizer(args.optimizer, solvers, sched, optim_seed)
 
     # initialize visualizers
     fig, axes = plt.subplots(2, 2, figsize=(12, 8))
@@ -106,11 +98,11 @@ def main():
     # else:
     #     two_opt_indices = np.append(two_opt.solution, two_opt.solution[0])
     # tsp_ax.plot(xs[two_opt_indices], ys[two_opt_indices], c="red", ls="--")
-    tsp_viz = TSPVisualizer(tsp_ax, args.width, args.height, xs, ys, solver)
+    tsp_viz = TSPVisualizer(tsp_ax, args.width, args.height, xs, ys, optim)
     tsp_viz.setup()
 
     cost_ax.axhline(y=two_opt.cost, c="red", ls="--", label=f"2-OPT Cost: {two_opt.cost:.2f}")
-    cost_viz = CostVisualizer(cost_ax, args.iterations, solver)
+    cost_viz = CostVisualizer(cost_ax, args.iterations, optim)
     cost_viz.setup()
     cost_ax.legend()
 

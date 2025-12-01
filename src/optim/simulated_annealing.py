@@ -1,23 +1,27 @@
 __all__ = ["SimulatedAnnealing"]
 
+from typing import TypeVar, cast
+
 import numpy as np
 from solvers import StochasticSolver
 
 from .optimizer import Optimizer
 from .temp_scheduler import TempScheduler
 
+T = TypeVar("T", bound=StochasticSolver)
+
 RNGS = ("selection", "combination", "mutation")
 
 
-class SimulatedAnnealing(Optimizer):
-    solver: StochasticSolver
+class SimulatedAnnealing(Optimizer[T]):
+    solver: T
     temp_sched: TempScheduler
     rngs: dict[str, np.random.Generator]
     prob: float
 
     def __init__(
         self,
-        solver: StochasticSolver,
+        solver: T,
         temp_sched: TempScheduler,
         seed_seq: np.random.SeedSequence | None = None,
     ):
@@ -45,4 +49,8 @@ class SimulatedAnnealing(Optimizer):
         else:
             self.prob = 1.0
         if self.rngs["selection"].uniform() <= self.prob:
-            self.solver.__dict__.update(new_solver.__dict__)
+            self.solver = cast(T, new_solver)
+
+    @property
+    def solution(self) -> T:
+        return self.solver

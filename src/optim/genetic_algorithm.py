@@ -1,6 +1,6 @@
 __all__ = ["GeneticAlgorithm"]
 
-from typing import Sequence
+from typing import Sequence, TypeVar
 
 import numpy as np
 from solvers import StochasticSolver
@@ -8,18 +8,20 @@ from solvers import StochasticSolver
 from .optimizer import Optimizer
 from .temp_scheduler import TempScheduler
 
+T = TypeVar("T", bound=StochasticSolver)
+
 RNGS = ("selection", "combination", "mutation")
 
 
-class GeneticAlgorithm(Optimizer):
-    solvers: Sequence[StochasticSolver]
+class GeneticAlgorithm(Optimizer[T]):
+    solvers: Sequence[T]
     temp_sched: TempScheduler
     rngs: dict[str, np.random.Generator]
     probs: list[float]
 
     def __init__(
         self,
-        solvers: Sequence[StochasticSolver],
+        solvers: Sequence[T],
         temp_sched: TempScheduler,
         seed_seq: np.random.SeedSequence | None = None,
     ):
@@ -55,5 +57,8 @@ class GeneticAlgorithm(Optimizer):
             b.mutate(self.rngs["mutation"])
             new_solvers.append(a)
             new_solvers.append(b)
-        for i in range(len(self.solvers)):
-            self.solvers[i].__dict__.update(new_solvers[i].__dict__)
+        self.solvers = new_solvers
+
+    @property
+    def solution(self) -> T:
+        return max(self.solvers)
