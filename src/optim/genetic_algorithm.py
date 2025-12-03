@@ -36,13 +36,15 @@ class GeneticAlgorithm(Optimizer[T]):
         self.probs = [1.0 / len(solvers) for _ in solvers]
 
     def step(self):
-        # compute fitness using softmax
-        best_sol = max(self.solvers)
-        energies = np.asarray([best_sol.cost - s.cost for s in self.solvers])
+        ranked_solvers = sorted(enumerate(self.solvers), key=lambda x: x[1], reverse=True) 
+        ranks = np.arange(len(self.solvers), 0, -1)  
+        energies = ranks.astype(float)
         exp_energies = np.exp(energies / self.temp_sched.temp)
-        self.probs = exp_energies / exp_energies.sum()
-
-        # get new generation
+        ranked_probs = exp_energies / exp_energies.sum()
+        self.probs = [0.0] * len(self.solvers)
+        for prob, (orig_idx, _) in zip(ranked_probs, ranked_solvers):
+            self.probs[orig_idx] = prob
+        
         new_solvers = []
         for _ in range(len(self.solvers) // 2):
             i = self.rngs["selection"].choice(len(self.solvers), p=self.probs)
