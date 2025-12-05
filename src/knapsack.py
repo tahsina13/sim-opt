@@ -58,17 +58,19 @@ def get_optimizer(
         case _:
             raise ValueError(f"Unknown optimizer '{optimizer}'")
 
+def dp_knapsack(weights: np.ndarray, values: np.ndarray, limit: int) -> float:
+    n = len(weights)
+    dp = np.zeros((n + 1, limit + 1), dtype=np.int64)
+    
+    for i in range(1, n + 1):
+        for w in range(limit + 1):
 
-def greedy_knapsack(weights: np.ndarray, values: np.ndarray, limit: int) -> float:
-    ratios = values / weights
-    sorted_indices = np.argsort(ratios)[::-1]
-    total_weight = 0
-    total_value = 0
-    for idx in sorted_indices:
-        if total_weight + weights[idx] <= limit:
-            total_weight += weights[idx]
-            total_value += values[idx]
-    return float(total_value)
+            # Exclude item i-1 or include it if it fits
+            dp[i][w] = dp[i-1][w]  
+            if weights[i-1] <= w:
+                dp[i][w] = max(dp[i][w], dp[i-1][w - weights[i-1]] + values[i-1])
+    
+    return float(dp[n][limit])
 
 def main():
     args = parser.parse_args()
@@ -88,11 +90,10 @@ def main():
     print(f"Total weight: {total_weight}, Capacity: {limit} ({args.capacity_ratio*100:.0f}%)")
     
     # compute greedy solution
-    greedy_cost = greedy_knapsack(weights, values, limit)  # ← Add 'values' here
-    print(f"Greedy solution: {greedy_cost:.2f}")
+    optimal_cost = dp_knapsack(weights, values, limit) 
     
     # generate initial population
-    solvers = [StochasticKnapsackSolver(weights, values, limit) for _ in range(args.population)]  # ← Add 'values' here
+    solvers = [StochasticKnapsackSolver(weights, values, limit) for _ in range(args.population)]
     for solver in solvers:
         solver.generate(gen_rng)
 
@@ -108,7 +109,7 @@ def main():
 
     # cost visualization
     cost_ax = axes[0]
-    cost_ax.axhline(y=greedy_cost, c="red", ls="--", label=f"Greedy Cost: {greedy_cost:.2f}")
+    cost_ax.axhline(y=optimal_cost, c="red", ls="--", label=f"DP Optimal: {optimal_cost:.2f}")
     cost_viz = CostVisualizer(cost_ax, args.iterations, optim)
     cost_viz.setup()
     cost_ax.legend()
