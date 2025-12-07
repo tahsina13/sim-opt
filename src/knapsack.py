@@ -15,6 +15,7 @@ from visualizers.cost_visualizer import CostVisualizer
 from visualizers.ga_visualizer import GAVisualizer
 from visualizers.sa_visualizer import SAVisualizer
 from visualizers.temp_visualizer import TempVisualizer
+from visualizers.knapsack_visualizer import KnapsackVisualizer
 
 parser = argparse.ArgumentParser()
 parser.add_argument("-n", "--num-items", help="number of items", type=int, default=50)
@@ -129,19 +130,10 @@ def main():
     temp_viz = TempVisualizer(temp_ax, args.iterations, sched)
     temp_viz.setup()
 
-    # capacity utilization
-    util_ax = axes[3]
-    util_ax.set_title("Capacity Utilization (Weight)")
-    util_ax.set_xlabel("iterations")
-    util_ax.set_ylabel("utilization %")
-    util_ax.set_xlim(0, args.iterations)
-    util_ax.set_ylim(0, 110)
-    util_ax.axhline(y=100, c="red", ls="--", label="Capacity")
-    
-    # initial weight utilization
-    initial_weight = np.sum(optim.solution.weights[np.flatnonzero(optim.solution.solution)])
-    util_line, = util_ax.plot(0, 100 * initial_weight / limit, c="blue")
-    util_ax.legend()
+    # knapsack item selection
+    knap_ax = axes[3]
+    knap_viz = KnapsackVisualizer(knap_ax, optim) 
+    knap_viz.setup()
 
     # optimization loop
     for i in range(1, args.iterations + 1):
@@ -151,18 +143,9 @@ def main():
         if optim_viz:
             optim_viz.update(i)
         temp_viz.update(i)
-        
-        # Update utilization (weight, not value!)
-        current_weight = np.sum(optim.solution.weights[np.flatnonzero(optim.solution.solution)])
-        xdata = np.append(util_line.get_xdata(), i)
-        ydata = np.append(util_line.get_ydata(), 100 * current_weight / limit)
-        util_line.set_data(xdata, ydata)
-        
+        knap_viz.update(i)
         plt.pause(0.0001)
         time.sleep(0.001)
-    
-    plt.show()
-
 
 if __name__ == "__main__":
     main()
