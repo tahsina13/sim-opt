@@ -37,6 +37,7 @@ class GeneticAlgorithm(Optimizer[T]):
 
     def step(self):
         costs = np.asarray([s.cost for s in self.solvers])
+        self.diversity = np.std(costs)
         
         # Figures out if it's max or min and assigns accordingly
         best_sol = max(self.solvers)
@@ -48,8 +49,9 @@ class GeneticAlgorithm(Optimizer[T]):
             fitness_values = costs - min_cost + 1.0
         else:
             fitness_values = max_cost - costs + 1.0
-        
-        exp_fitness = np.exp(fitness_values / self.temp_sched.temp)
+        exponent = fitness_values / max(self.temp_sched.temp, 1e-10)
+        exponent = exponent - np.max(exponent)  
+        exp_fitness = np.exp(exponent)
         self.probs = exp_fitness / exp_fitness.sum()
         
         new_solvers = []

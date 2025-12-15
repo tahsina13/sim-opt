@@ -104,7 +104,6 @@ class StochasticKnapsackSolver(KnapsackSolver, StochasticSolver):
         if not selected or not unselected:
             return
         
-        # swap mutation
         remove_idx = rng.choice(selected)
         add_idx = rng.choice(unselected)
         
@@ -114,5 +113,3 @@ class StochasticKnapsackSolver(KnapsackSolver, StochasticSolver):
         if new_weight <= self.limit:
             self.solution[remove_idx] = False
             self.solution[add_idx] = True
-        else:
-            self.solution[remove_idx] = False
