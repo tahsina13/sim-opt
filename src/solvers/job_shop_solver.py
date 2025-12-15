@@ -144,39 +144,38 @@ class GreedyJobShopSolver(JobShopSolver, HeuristicSolver):
 
 class StochasticJobShopSolver(JobShopSolver, StochasticSolver):
     def generate(self, rng: np.random.Generator):
-        all_ops = []
-        for job_id, job_ops in enumerate(self.jobs):
-            for op_idx in range(len(job_ops)):
-                all_ops.append((job_id, op_idx))
-
-        # shuffle to make initial solution worse
-        job_blocks = {}
-        for op in all_ops:
-            job_blocks.setdefault(op[0], []).append(op)
-
-        shuffled_ops = []
-        job_ids = list(job_blocks.keys())
+        job_ids = list(range(len(self.jobs)))
         rng.shuffle(job_ids)
+        
+        schedule = []
         for job_id in job_ids:
-            ops = job_blocks[job_id]
-            rng.shuffle(ops)
-            shuffled_ops.extend(ops)
-
-        self.solution = shuffled_ops
+            for op_idx in range(len(self.jobs[job_id])):
+                schedule.append((job_id, op_idx))
+        
+        self.solution = schedule
 
     def mutate(self, rng: np.random.Generator):
         if self.solution is None:
             raise RuntimeError(f"Failed to mutate solution '{self.solution}'")
-        i, j = sorted(rng.choice(len(self.solution), size=2, replace=False))
+        
+        i = rng.choice(len(self.solution))
+        j = rng.choice(len(self.solution))
+        if i > j:
+            i, j = j, i
+        
         segment = self.solution[i:j]
         job_groups = {}
         for op in segment:
             job_groups.setdefault(op[0], []).append(op)
         
-        reversed_segment = []
-        for job_id in reversed(list(job_groups.keys())):
-            reversed_segment.extend(job_groups[job_id])
-        self.solution[i:j] = reversed_segment
+        job_ids = list(job_groups.keys())
+        rng.shuffle(job_ids)
+        
+        shuffled_segment = []
+        for job_id in job_ids:
+            shuffled_segment.extend(job_groups[job_id])
+        
+        self.solution = self.solution[:i] + shuffled_segment + self.solution[j:]
 
     def combine(self, other: StochasticSolver, rng: np.random.Generator):
         other = cast(StochasticJobShopSolver, other)
@@ -184,12 +183,26 @@ class StochasticJobShopSolver(JobShopSolver, StochasticSolver):
             raise RuntimeError(
                 f"Failed to combine solution '{self.solution}' with '{other.solution}'"
             )
-        n = len(self.solution)
-        i, j = sorted(rng.choice(n, size=2, replace=False))
-        subseq = self.solution[i:j]
-        new_solution = list(subseq)
+        
+        i = rng.choice(len(self.solution))
+        new_solution = self.solution[i:]
+        included_ops = set(new_solution)
+        job_progress = {}
+        for op in new_solution:
+            job_id, op_idx = op
+            job_progress[job_id] = max(job_progress.get(job_id, 0), op_idx + 1)
         for op in other.solution:
-            if op not in new_solution:
-                new_solution.append(op)
+            job_id, op_idx = op
+            if op not in included_ops:
+                if job_progress.get(job_id, 0) == op_idx:
+                    new_solution.append(op)
+                    included_ops.add(op)
+                    job_progress[job_id] = op_idx + 1
+        for job_id in range(len(self.jobs)):
+            start_idx = job_progress.get(job_id, 0)
+            for op_idx in range(start_idx, len(self.jobs[job_id])):
+                op = (job_id, op_idx)
+                if op not in included_ops:
+                    new_solution.append(op)
         
         self.solution = new_solution

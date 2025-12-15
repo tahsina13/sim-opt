@@ -50,12 +50,12 @@ class KnapsackSolver(Solver):
 class StochasticKnapsackSolver(KnapsackSolver, StochasticSolver):
     def generate(self, rng: np.random.Generator):
         self.solution = [False] * len(self.weights)
-        
-        order = rng.permutation(len(self.weights))
         current_weight = 0
         
+        order = rng.permutation(len(self.weights))
+        
         for idx in order:
-            if current_weight + self.weights[idx] <= self.limit:
+            if rng.random() < 0.5 and current_weight + self.weights[idx] <= self.limit:
                 self.solution[idx] = True
                 current_weight += self.weights[idx]
 
