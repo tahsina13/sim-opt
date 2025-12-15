@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 
 import argparse
+import json
 import time
+from pathlib import Path
 from typing import Sequence
 
 import matplotlib.pyplot as plt
@@ -33,6 +35,10 @@ parser.add_argument("-r", "--cooling-rate", help="cooling rate", type=float, def
 parser.add_argument("-i", "--iterations", help="number of itereations", type=int, default=1500)
 parser.add_argument("-s", "--seed", help="seed for simulation", type=int)
 
+# batching
+parser.add_argument("--batch", help="run in batch mode (no visualization)", action="store_true")
+parser.add_argument("--output-json", help="save results to JSON file", type=str)
+
 
 def get_scheduler(
     cooling_schedule: str, temp: float, cooling_rate: float
@@ -62,7 +68,6 @@ def get_optimizer(
         case _:
             raise ValueError(f"Unknown optimizer '{optimizer}'")
 
-
 def main():
     args = parser.parse_args()
 
@@ -87,48 +92,71 @@ def main():
     sched = get_scheduler(args.cooling_schedule, args.temperature, args.cooling_rate)
     optim = get_optimizer(args.optimizer, solvers, sched, optim_seed)
 
-    # initialize visualizers
-    fig, axes = plt.subplots(2, 2, figsize=(12, 8))
-    tsp_ax, cost_ax, optim_ax, temp_ax = axes.flatten()
-    plt.subplots_adjust(hspace=0.3)
-    fig.suptitle("Travelling Salesman Problem")
+    if args.batch:
+        iterations_to_target = args.iterations 
+        converged = False
+        for i in range(1, args.iterations + 1):
+            optim.step()
+            sched.step()
+            current_cost = optim.solution.cost
+            if current_cost <= two_opt.cost:
+                iterations_to_target = i
+                converged = True
+                break
+        final_cost = optim.solution.cost
+        
+        if args.output_json:
+            results = {
+                'problem_size': args.num_nodes,
+                'scheduler': args.cooling_schedule,
+                'seed': args.seed,
+                'final_cost': float(final_cost),
+                'target_cost': float(two_opt.cost),
+                'iterations_to_target': int(iterations_to_target),
+                'converged': bool(converged),
+            }
+            output_path = Path(args.output_json)
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+            with open(output_path, 'w') as f:
+                json.dump(results, f, indent=2)
+    
+    else:
+        fig, axes = plt.subplots(2, 2, figsize=(12, 8))
+        tsp_ax, cost_ax, optim_ax, temp_ax = axes.flatten()
+        plt.subplots_adjust(hspace=0.3)
+        fig.suptitle("Travelling Salesman Problem")
 
-    # if two_opt.solution is None or len(two_opt.solution) == 0:
-    #     two_opt_indices = np.array([], dtype=np.int_)
-    # else:
-    #     two_opt_indices = np.append(two_opt.solution, two_opt.solution[0])
-    # tsp_ax.plot(xs[two_opt_indices], ys[two_opt_indices], c="red", ls="--")
-    tsp_viz = TSPVisualizer(tsp_ax, args.width, args.height, xs, ys, optim)
-    tsp_viz.setup()
+        tsp_viz = TSPVisualizer(tsp_ax, args.width, args.height, xs, ys, optim)
+        tsp_viz.setup()
 
-    cost_ax.axhline(y=two_opt.cost, c="red", ls="--", label=f"2-OPT Cost: {two_opt.cost:.2f}")
-    cost_viz = CostVisualizer(cost_ax, args.iterations, optim)
-    cost_viz.setup()
-    cost_ax.legend()
+        cost_ax.axhline(y=two_opt.cost, c="red", ls="--", label=f"2-OPT Cost: {two_opt.cost:.2f}")
+        cost_viz = CostVisualizer(cost_ax, args.iterations, optim)
+        cost_viz.setup()
+        cost_ax.legend()
 
-    optim_viz = None
-    if isinstance(optim, SimulatedAnnealing):
-        optim_viz = SAVisualizer(optim_ax, args.iterations, optim)
-    elif isinstance(optim, GeneticAlgorithm):
-        optim_viz = GAVisualizer(optim_ax, args.iterations, optim)
-    if optim_viz:
-        optim_viz.setup()
-
-    temp_viz = TempVisualizer(temp_ax, args.iterations, sched)
-    temp_viz.setup()
-
-    # optimization loop
-    for i in range(1, args.iterations + 1):
-        optim.step()
-        sched.step()
-        tsp_viz.update(i)
-        cost_viz.update(i)
+        optim_viz = None
+        if isinstance(optim, SimulatedAnnealing):
+            optim_viz = SAVisualizer(optim_ax, args.iterations, optim)
+        elif isinstance(optim, GeneticAlgorithm):
+            optim_viz = GAVisualizer(optim_ax, args.iterations, optim)
         if optim_viz:
-            optim_viz.update(i)
-        temp_viz.update(i)
-        plt.pause(0.0001)
-        time.sleep(0.001)
-    plt.show()
+            optim_viz.setup()
+
+        temp_viz = TempVisualizer(temp_ax, args.iterations, sched)
+        temp_viz.setup()
+
+        # optimization loop
+        for i in range(1, args.iterations + 1):
+            optim.step()
+            sched.step()
+            tsp_viz.update(i)
+            cost_viz.update(i)
+            if optim_viz:
+                optim_viz.update(i)
+            temp_viz.update(i)
+            plt.pause(0.0001)
+            time.sleep(0.001)
+        plt.show()
 
 
 if __name__ == "__main__":
