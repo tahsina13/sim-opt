@@ -68,6 +68,61 @@ def get_optimizer(
         case _:
             raise ValueError(f"Unknown optimizer '{optimizer}'")
 
+def run_batch_trial(
+    num_nodes: int,
+    optimizer: str,
+    cooling_schedule: str,
+    temperature: float,
+    cooling_rate: float,
+    iterations: int,
+    seed: int,
+    width: int = 16,
+    height: int = 12,
+    population: int = 20
+):
+    seed_seq = np.random.SeedSequence(seed)
+    gen_seed, optim_seed = seed_seq.spawn(2)
+    gen_rng = np.random.default_rng(gen_seed)
+
+    xs = gen_rng.uniform(0, width, num_nodes)
+    ys = gen_rng.uniform(0, height, num_nodes)
+    dx = xs[:, np.newaxis] - xs[np.newaxis, :]
+    dy = ys[:, np.newaxis] - ys[np.newaxis, :]
+    adj_mat = np.sqrt(dx * dx + dy * dy)
+    two_opt = TwoOptTSPSolver(adj_mat)
+    two_opt.solve()
+    solvers = [StochasticTSPSolver(adj_mat) for _ in range(population)]
+    for solver in solvers:
+        solver.generate(gen_rng)
+
+    sched = get_scheduler(cooling_schedule, temperature, cooling_rate)
+    optim = get_optimizer(optimizer, solvers, sched, optim_seed)
+
+    cost_history = []
+    iterations_to_target = iterations
+    converged = False
+    
+    for i in range(1, iterations + 1):
+        optim.step()
+        sched.step()
+        cost_history.append(float(optim.solution.cost))
+        
+        if optim.solution.cost <= two_opt.cost:
+            iterations_to_target = i
+            converged = True
+            break
+    
+    return {
+        'problem_size': num_nodes,
+        'scheduler': cooling_schedule,
+        'seed': seed,
+        'final_cost': float(optim.solution.cost),
+        'target_cost': float(two_opt.cost),
+        'iterations_to_target': int(iterations_to_target),
+        'converged': bool(converged),
+        'cost_history': cost_history,
+    }
+
 def main():
     args = parser.parse_args()
 
@@ -93,32 +148,38 @@ def main():
     optim = get_optimizer(args.optimizer, solvers, sched, optim_seed)
 
     if args.batch:
-        iterations_to_target = args.iterations 
-        converged = False
-        for i in range(1, args.iterations + 1):
-            optim.step()
-            sched.step()
-            current_cost = optim.solution.cost
-            if current_cost <= two_opt.cost:
-                iterations_to_target = i
-                converged = True
-                break
-        final_cost = optim.solution.cost
-        
-        if args.output_json:
-            results = {
-                'problem_size': args.num_nodes,
-                'scheduler': args.cooling_schedule,
-                'seed': args.seed,
-                'final_cost': float(final_cost),
-                'target_cost': float(two_opt.cost),
-                'iterations_to_target': int(iterations_to_target),
-                'converged': bool(converged),
-            }
-            output_path = Path(args.output_json)
-            output_path.parent.mkdir(parents=True, exist_ok=True)
-            with open(output_path, 'w') as f:
-                json.dump(results, f, indent=2)
+            cost_history = []
+            iterations_to_target = args.iterations 
+            converged = False
+            
+            for i in range(1, args.iterations + 1):
+                optim.step()
+                sched.step()
+                cost_history.append(float(optim.solution.cost))
+                
+                current_cost = optim.solution.cost
+                if current_cost <= two_opt.cost:
+                    iterations_to_target = i
+                    converged = True
+                    break
+            
+            final_cost = optim.solution.cost
+            
+            if args.output_json:
+                results = {
+                    'problem_size': args.num_nodes,
+                    'scheduler': args.cooling_schedule,
+                    'seed': args.seed,
+                    'final_cost': float(final_cost),
+                    'target_cost': float(two_opt.cost),
+                    'iterations_to_target': int(iterations_to_target),
+                    'converged': bool(converged),
+                    'cost_history': cost_history,
+                }
+                output_path = Path(args.output_json)
+                output_path.parent.mkdir(parents=True, exist_ok=True)
+                with open(output_path, 'w') as f:
+                    json.dump(results, f, indent=2)
     
     else:
         fig, axes = plt.subplots(2, 2, figsize=(12, 8))
