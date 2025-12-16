@@ -3,8 +3,8 @@
 import subprocess
 import json
 from pathlib import Path
+from collections import defaultdict
 
-# Configuration
 PROBLEM_SIZES = [10, 20, 30]
 NUM_INSTANCES = 10 
 SCHEDULERS = ["linear", "exponential", "logarithmic"]
@@ -29,19 +29,36 @@ def run_single_trial(size, scheduler, instance_id):
         "--output-json", output_file
     ]
     subprocess.run(cmd, capture_output=True, text=True)
-    return output_file
+
+def create_summary():
+    results = defaultdict(lambda: defaultdict(list))
+    
+    for size in PROBLEM_SIZES:
+        for scheduler in SCHEDULERS:
+            for instance_id in range(NUM_INSTANCES):
+                with open(f"results/raw/n{size}_{scheduler}_{instance_id}.json", 'r') as f:
+                    data = json.load(f)
+                    results[size][scheduler].append(data['iterations_to_target'])
+    
+    summary = {}
+    for size in PROBLEM_SIZES:
+        summary[size] = {}
+        for scheduler in SCHEDULERS:
+            iters = results[size][scheduler]
+            summary[size][scheduler] = sum(iters) / len(iters)
+    
+    with open('results/summary.json', 'w') as f:
+        json.dump(summary, f, indent=2)
 
 def main():
     Path("results/raw").mkdir(parents=True, exist_ok=True)
-    total = len(PROBLEM_SIZES) * len(SCHEDULERS) * NUM_INSTANCES
-    count = 0
     
     for size in PROBLEM_SIZES:
         for instance_id in range(NUM_INSTANCES):
             for scheduler in SCHEDULERS:
-                count += 1
-                print(f"Test {count}/{total}")
                 run_single_trial(size, scheduler, instance_id)
+    
+    create_summary()
 
 if __name__ == "__main__":
     main()
